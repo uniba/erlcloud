@@ -16,7 +16,7 @@
          receive_message/1, receive_message/2, receive_message/3, receive_message/4,
          receive_message/5, receive_message/6, receive_message/7,
          remove_permission/2, remove_permission/3,
-         send_message/2, send_message/3, send_message/4, send_message/5,
+         send_message/2, send_message/3, send_message/4, send_message/5, send_message/7,
          set_queue_attributes/2, set_queue_attributes/3,
          send_message_batch/2, send_message_batch/3, send_message_batch/4,
          delete_message_batch/2, delete_message_batch/3,
@@ -433,6 +433,26 @@ send_message(QueueName, MessageBody, DelaySeconds, MessageAttributes, #aws_confi
     EncodedMessageAttributes = encode_message_attributes(MessageAttributes),
     Doc = sqs_xml_request(Config, QueueName, "SendMessage",
                           [{"MessageBody", MessageBody},
+                           {"DelaySeconds", DelaySeconds} | EncodedMessageAttributes]),
+    erlcloud_xml:decode(
+      [
+       {message_id, "SendMessageResult/MessageId", text},
+       {md5_of_message_body, "SendMessageResult/MD5OfMessageBody", text}
+      ],
+      Doc
+     ).
+
+-spec send_message(string(), string(), string(), string(), 0..900 | none, [message_attribute()], aws_config()) -> proplist().
+send_message(QueueName, MessageBody, MessageGroupId, MessageDeduplicationId, DelaySeconds, MessageAttributes, #aws_config{}=Config)
+  when is_list(QueueName) andalso
+       is_list(MessageBody) andalso
+       ((DelaySeconds >= 0 andalso DelaySeconds =< 900) orelse DelaySeconds =:= none) andalso
+       is_list(MessageAttributes) ->
+    EncodedMessageAttributes = encode_message_attributes(MessageAttributes),
+    Doc = sqs_xml_request(Config, QueueName, "SendMessage",
+                          [{"MessageBody", MessageBody},
+                           {"MessageGroupId", MessageGroupId},
+                           {"MessageDeduplicationId", MessageDeduplicationId},
                            {"DelaySeconds", DelaySeconds} | EncodedMessageAttributes]),
     erlcloud_xml:decode(
       [
